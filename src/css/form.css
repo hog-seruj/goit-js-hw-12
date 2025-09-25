@@ -82,3 +82,14 @@ fieldset {
     vertical-align: baseline;
   }
 }
+
+.button-more {
+  position: relative;
+  translate: -50%;
+  left: 50%;
+  margin-top: 32px;
+
+  &.hide {
+    display: none;
+  }
+}
