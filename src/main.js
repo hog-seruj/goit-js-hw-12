@@ -21,6 +21,7 @@ loadMoreButton.addEventListener('click', moreButtonHandler);
 
 function submitHandler(e) {
   e.preventDefault();
+  pageNumber = 1;
 
   const { ['search-text']: searchInput } = e.target.elements;
   searchInputValue = searchInput.value.trim();
@@ -32,13 +33,17 @@ function submitHandler(e) {
   clearGallery();
   showLoader();
 
-  getImagesByQuery(searchInputValue, 1)
-    .then(({data}) => {
+  getImagesByQuery(searchInputValue, pageNumber)
+    .then(({ data, totalPages }) => {
       if (!data.length) {
         throw new Error('No images found!');
       }
       createGallery(data);
       showLoadMoreButton();
+
+      if (pageNumber >= totalPages) {
+        hideLoadMoreButton();
+      }
     })
     .catch(error => {
       clearGallery();
@@ -62,20 +67,29 @@ function moreButtonHandler(e) {
   showLoader();
 
   getImagesByQuery(searchInputValue, pageNumber)
-    .then(({data, totalPages}) => {
+    .then(({ data, totalPages }) => {
       if (pageNumber >= totalPages) {
-        throw new Error("We're sorry, but you've reached the end of search results.");
+        hideLoadMoreButton();
+      } else {
+        showLoadMoreButton();
+      }
+
+      if (pageNumber > totalPages) {
+        throw new Error(
+          "We're sorry, but you've reached the end of search results."
+        );
       }
 
       createGallery(data);
-      showLoadMoreButton();
       button.disable = true;
 
-      const itemHeight = gallery.querySelector('.gallery-item').getBoundingClientRect().height;
+      const itemHeight = gallery
+        .querySelector('.gallery-item')
+        .getBoundingClientRect().height;
 
       window.scrollBy({
         top: itemHeight * 3,
-        behavior: "smooth",
+        behavior: 'smooth',
       });
     })
     .catch(error => {
