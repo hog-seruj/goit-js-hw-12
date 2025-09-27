@@ -19,88 +19,101 @@ let searchInputValue = '';
 form.addEventListener('submit', submitHandler);
 loadMoreButton.addEventListener('click', moreButtonHandler);
 
-function submitHandler(e) {
+async function submitHandler(e) {
   e.preventDefault();
   pageNumber = 1;
 
   const { ['search-text']: searchInput } = e.target.elements;
   searchInputValue = searchInput.value.trim();
 
-  if (!searchInputValue.length) {
-    return;
-  }
-
   clearGallery();
-  showLoader();
+  hideLoadMoreButton();
 
-  getImagesByQuery(searchInputValue, pageNumber)
-    .then(({ data, totalPages }) => {
-      if (!data.length) {
-        throw new Error('No images found!');
-      }
+  try {
+    if (!searchInputValue.length) {
+      searchInput.classList.add('error');
+      showErrorPopup("Input shouldn't be empty!");
+      return;
+    }
+    searchInput.classList.remove('error');
+    showLoader();
+
+    const { data, totalPages } = await getImagesByQuery(
+      searchInputValue,
+      pageNumber
+    );
+
+    if (!data.length) {
+      throw new Error('No images found!');
+    } else {
       createGallery(data);
-      showLoadMoreButton();
+    }
 
-      if (pageNumber >= totalPages) {
-        hideLoadMoreButton();
-      }
-    })
-    .catch(error => {
-      clearGallery();
-      hideLoadMoreButton();
-      iziToast.error({
-        message: error.message,
-        position: 'topRight',
-      });
-    })
-    .finally(() => {
-      hideLoader();
-    });
+    if (pageNumber < totalPages) {
+      showLoadMoreButton();
+    }
+  } catch (error) {
+    showErrorPopup(error.message);
+  } finally {
+    hideLoader();
+  }
 
   form.reset();
 }
 
-function moreButtonHandler(e) {
+async function moreButtonHandler(e) {
   e.preventDefault();
   const button = e.currentTarget;
+
   pageNumber += 1;
   showLoader();
+  button.disabled = true;
 
-  getImagesByQuery(searchInputValue, pageNumber)
-    .then(({ data, totalPages }) => {
-      if (pageNumber >= totalPages) {
-        hideLoadMoreButton();
-      } else {
-        showLoadMoreButton();
-      }
+  try {
+    const { data, totalPages } = await getImagesByQuery(
+      searchInputValue,
+      pageNumber
+    );
 
-      if (pageNumber > totalPages) {
-        throw new Error(
-          "We're sorry, but you've reached the end of search results."
-        );
-      }
+    createGallery(data);
 
-      createGallery(data);
-      button.disable = true;
+    if (pageNumber < totalPages) {
+      showLoadMoreButton();
+    } else {
+      hideLoadMoreButton();
+      showInfoPopup("We're sorry, but you've reached the end of search results.");
+    }
 
-      const itemHeight = gallery
-        .querySelector('.gallery-item')
-        .getBoundingClientRect().height;
+    const galleryItem = gallery.querySelector('.gallery-item');
 
+    if (galleryItem) {
+      const itemHeight = galleryItem.getBoundingClientRect().height;
       window.scrollBy({
-        top: itemHeight * 3,
+        top: itemHeight * 2,
         behavior: 'smooth',
       });
-    })
-    .catch(error => {
-      hideLoadMoreButton();
-      iziToast.info({
-        message: error.message,
-        position: 'topRight',
-      });
-    })
-    .finally(() => {
-      hideLoader();
-      button.disable = false;
-    });
+    }
+  } catch (error) {
+    hideLoadMoreButton();
+    showErrorPopup(error.message);
+  } finally {
+    hideLoader();
+    button.disabled = false;
+  }
+}
+
+function showErrorPopup(message) {
+  iziToast.error({
+    message: message,
+    position: 'topRight',
+    timeout: 3000,
+  });
+}
+
+function showInfoPopup(message) {
+  iziToast.info({
+    message: message,
+    position: 'topRight',
+    timeout: 3000,
+  });
 }
